@@ -61,9 +61,9 @@ function buildUrl(baseUrl: string, params: Record<string, string | number>) {
 
 async function fetchJsonWithFallback<T>(params: Record<string, string | number>): Promise<BlockscoutResponse<T>> {
   const urlsToTry = [
+    buildUrl(BLOCKSCOUT_API_URL, params),
     buildUrl(ETHERSCAN_V2_API_URL, params),
-    buildUrl(BASESCAN_LEGACY_API_URL, params),
-    buildUrl(BLOCKSCOUT_API_URL, params)
+    buildUrl(BASESCAN_LEGACY_API_URL, params)
   ];
   
   let lastError: Error | null = null;

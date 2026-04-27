@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="BaseScore icon">
+  <defs>
+    <linearGradient id="g" x1="18" y1="16" x2="112" y2="118" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#38bdf8" />
+      <stop offset="0.48" stop-color="#2563eb" />
+      <stop offset="1" stop-color="#0f172a" />
+    </linearGradient>
+    <filter id="s" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#38bdf8" flood-opacity="0.45" />
+    </filter>
+  </defs>
+  <rect width="128" height="128" rx="32" fill="#020617" />
+  <path d="M28 66C28 43.9 45.9 26 68 26h32v21H68c-10.5 0-19 8.5-19 19s8.5 19 19 19h32v21H68c-22.1 0-40-17.9-40-40Z" fill="url(#g)" filter="url(#s)" />
+  <circle cx="70" cy="66" r="14" fill="#e0f2fe" />
+</svg>

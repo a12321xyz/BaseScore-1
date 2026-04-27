@@ -25,7 +25,7 @@ public/screenshot.png
 - Address or ENS input.
 - `/analyze?address=0x...` shareable result route.
 - 100-point weighted Base activity score based on 18 heuristical signals.
-- Tier badge: Mythic, Gold, Silver, Uncommon, Eligible, No Signal.
+- Tier badge: Mythic, Gold, Silver, Uncommon, Eligible, Unranked.
 - Criteria cards with earned or missed points.
 - 52-week GitHub-style activity heatmap.
 - Protocol fingerprint for known Base apps.
@@ -84,12 +84,12 @@ BaseScore evaluates 18 signals out of 100 points:
 Tier mapping:
 
 ```txt
-85-100 Mythic
-65-84 Gold
-40-64 Silver
-20-39 Uncommon
-5-19 Eligible
-0-4 No Signal
+80-100 Mythic
+60-79 Gold
+40-59 Silver
+25-39 Uncommon
+10-24 Eligible
+0-9 Unranked
 ```
 
 ## Local Development

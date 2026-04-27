@@ -1,4 +1,4 @@
-export type Tier = "Mythic" | "Gold" | "Silver" | "Uncommon" | "Eligible" | "No Signal";
+export type Tier = "Mythic" | "Gold" | "Silver" | "Uncommon" | "Eligible" | "Unranked";
 
 export type InputType = "address" | "ens";
 

@@ -22,13 +22,23 @@ function weiToEth(valueWei: string) {
   }
 }
 
+// Compute ISO week key (year-week) based on Monday as the first day of the week.
+// This is more robust across year boundaries than the previous implementation.
 function getWeekKey(timestamp: number) {
   const date = new Date(timestamp);
-  const firstDay = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  const dayOfYear = Math.floor((date.getTime() - firstDay.getTime()) / DAY_MS);
-  const week = Math.ceil((dayOfYear + firstDay.getUTCDay() + 1) / 7);
+  // Normalize to UTC date to avoid timezone drift
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  // Move to Monday (0) as start of the week
+  const day = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - day);
 
-  return `${date.getUTCFullYear()}-${week}`;
+  // Week 1 is the week with Jan 4th in it (ISO-8601 rule)
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const diff = d.getTime() - yearStart.getTime();
+  const week = Math.floor(diff / DAY_MS / 7) + 1;
+
+  // Return in the form YYYY-Www (e.g., 2026-W15)
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
 function getMonthKey(timestamp: number) {
@@ -142,11 +152,11 @@ function assessSybilRisk(metrics: WalletMetrics): SybilAssessment {
 }
 
 function tierFromScore(score: number): Tier {
-  if (score >= 85) {
+  if (score >= 80) {
     return "Mythic";
   }
 
-  if (score >= 65) {
+  if (score >= 60) {
     return "Gold";
   }
 
@@ -154,18 +164,16 @@ function tierFromScore(score: number): Tier {
     return "Silver";
   }
 
-  if (score >= 20) {
+  if (score >= 25) {
     return "Uncommon";
   }
 
-  if (score >= 5) {
+  if (score >= 10) {
     return "Eligible";
   }
 
-  return "No Signal";
+  return "Unranked";
 }
-
-// ... keeping assessSybilRisk mapping the same.
 
 function criterion(
   id: string,
@@ -216,8 +224,18 @@ export function buildAnalysis(input: BuildAnalysisInput): AnalysisResult {
   let tokenInteractions = 0;
   let nftInteractions = 0;
 
-  for (const tx of successfulTxs) {
+  for (const tx of input.transactions) {
     if (!tx.timestamp) {
+      continue;
+    }
+
+    // Gas spent includes failed transactions
+    if (tx.from.toLowerCase() === addressLower) {
+      gasSpentEth += weiToEth((BigInt(tx.gasUsed || "0") * BigInt(tx.gasPrice || "0")).toString());
+    }
+
+    // Skip further metrics for failed transactions
+    if (tx.isError) {
       continue;
     }
 
@@ -229,10 +247,6 @@ export function buildAnalysis(input: BuildAnalysisInput): AnalysisResult {
 
     valueMovedEth += weiToEth(tx.valueWei);
 
-    if (tx.from.toLowerCase() === addressLower) {
-      gasSpentEth += weiToEth((BigInt(tx.gasUsed || "0") * BigInt(tx.gasPrice || "0")).toString());
-    }
-
     if (looksLikeContractCall(tx) && tx.to) {
       uniqueContracts.add(tx.to.toLowerCase());
     }
@@ -243,27 +257,20 @@ export function buildAnalysis(input: BuildAnalysisInput): AnalysisResult {
     }
 
     const protocol = getProtocolForAddress(tx.to);
-    const functionName = tx.functionName || "";
+    const functionName = (tx.functionName || "").toLowerCase();
 
-    if (protocol?.category === "Bridge" || includesAny(functionName, ["bridge", "depositeth", "withdraw"])) {
-      bridgeInteractions += 1;
-    }
+    // Refined category detection to avoid generic "withdraw" false positives
+    const isBridge = protocol?.category === "Bridge" || includesAny(functionName, ["bridge", "depositeth"]);
+    const isDex = protocol?.category === "DEX" || includesAny(functionName, ["swap", "exactinput", "exactoutput"]);
+    const isLending = protocol?.category === "Lending" || includesAny(functionName, ["borrow", "repay", "supply"]);
+    const isToken = protocol?.category === "Token" || includesAny(functionName, ["transfer", "approve", "permit"]);
+    const isNft = ["NFT", "Creator", "Social"].includes(protocol?.category || "") || includesAny(functionName, ["mint", "collect", "buyshares"]);
 
-    if (protocol?.category === "DEX" || includesAny(functionName, ["swap", "exactinput", "exactoutput"])) {
-      dexInteractions += 1;
-    }
-
-    if (protocol?.category === "Lending" || includesAny(functionName, ["borrow", "repay", "supply", "withdraw"] )) {
-      lendingInteractions += 1;
-    }
-
-    if (protocol?.category === "Token" || includesAny(functionName, ["transfer", "approve", "permit"])) {
-      tokenInteractions += 1;
-    }
-
-    if (["NFT", "Creator", "Social"].includes(protocol?.category || "") || includesAny(functionName, ["mint", "collect", "buyshares"])) {
-      nftInteractions += 1;
-    }
+    if (isBridge) bridgeInteractions += 1;
+    if (isDex) dexInteractions += 1;
+    if (isLending) lendingInteractions += 1;
+    if (isToken) tokenInteractions += 1;
+    if (isNft) nftInteractions += 1;
   }
 
   const firstTimestamp = input.firstTransaction?.timestamp || successfulTxs.at(-1)?.timestamp || 0;
@@ -299,8 +306,8 @@ export function buildAnalysis(input: BuildAnalysisInput): AnalysisResult {
   const criteria = [
     criterion("base-balance", "Base ETH holder", "Wallet holds native ETH on Base.", metrics.balanceEth > 0.00001, `${metrics.balanceEth.toFixed(5)} ETH`, 5),
     criterion("meaningful-balance", "Meaningful balance", "Wallet has enough ETH to look actively funded.", metrics.balanceEth >= 0.01, `${metrics.balanceEth.toFixed(4)} ETH`, 10),
-    criterion("ten-transactions", "10+ transactions", "Basic Base transaction activity.", metrics.txCount >= 10, `${metrics.txCount} analyzed`, 5),
-    criterion("fifty-transactions", "50+ transactions", "Stronger repeat activity signal.", metrics.txCount >= 50, `${metrics.txCount} analyzed`, 10),
+    criterion("ten-transactions", "10+ transactions", "Basic Base transaction activity.", metrics.analyzedTxCount >= 10, `${metrics.analyzedTxCount} successful`, 5),
+    criterion("fifty-transactions", "50+ transactions", "Stronger repeat activity signal.", metrics.analyzedTxCount >= 50, `${metrics.analyzedTxCount} successful`, 10),
     criterion("active-days", "7+ active days", "Activity spread across multiple days.", metrics.activeDays >= 7, `${metrics.activeDays} days`, 5),
     criterion("active-weeks", "4+ active weeks", "Activity persisted across several weeks.", metrics.activeWeeks >= 4, `${metrics.activeWeeks} weeks`, 5),
     criterion("active-months", "3+ active months", "Longer-term Base presence.", metrics.activeMonths >= 3, `${metrics.activeMonths} months`, 5),

@@ -1,7 +1,9 @@
 import type { NormalizedTx } from "@/lib/types";
 
 const BLOCKSCOUT_API_URL = "https://base.blockscout.com/api";
-const BASESCAN_API_URL = "https://api.basescan.org/api";
+const ETHERSCAN_V2_API_URL = "https://api.etherscan.io/v2/api"; // Unified V2 Endpoint
+const BASESCAN_LEGACY_API_URL = "https://api.basescan.org/api"; // Legacy network-specific endpoint
+const CHAIN_ID = 8453; // Base Mainnet
 const PAGE_SIZE = 2500;
 const MAX_PAGES = 1;
 
@@ -43,7 +45,12 @@ function buildUrl(baseUrl: string, params: Record<string, string | number>) {
     url.searchParams.set(key, String(value));
   }
 
-  if (baseUrl === BASESCAN_API_URL && process.env.BASESCAN_API_KEY) {
+  // API V2 requires chainid, legacy does not but it doesn't hurt
+  if (baseUrl === ETHERSCAN_V2_API_URL || baseUrl === BASESCAN_LEGACY_API_URL) {
+    url.searchParams.set("chainid", String(CHAIN_ID));
+  }
+
+  if ((baseUrl === ETHERSCAN_V2_API_URL || baseUrl === BASESCAN_LEGACY_API_URL) && process.env.BASESCAN_API_KEY) {
     url.searchParams.set("apikey", process.env.BASESCAN_API_KEY);
   } else if (baseUrl === BLOCKSCOUT_API_URL && process.env.BLOCKSCOUT_API_KEY) {
     url.searchParams.set("apikey", process.env.BLOCKSCOUT_API_KEY);
@@ -54,7 +61,8 @@ function buildUrl(baseUrl: string, params: Record<string, string | number>) {
 
 async function fetchJsonWithFallback<T>(params: Record<string, string | number>): Promise<BlockscoutResponse<T>> {
   const urlsToTry = [
-    buildUrl(BASESCAN_API_URL, params),
+    buildUrl(ETHERSCAN_V2_API_URL, params),
+    buildUrl(BASESCAN_LEGACY_API_URL, params),
     buildUrl(BLOCKSCOUT_API_URL, params)
   ];
   
@@ -82,9 +90,18 @@ async function fetchJsonWithFallback<T>(params: Record<string, string | number>)
 
       const data = await response.json() as BlockscoutResponse<T>;
       
-      // Some APIs return status "0" for rate limiting
-      if (data.status === "0" && typeof data.result === "string" && data.result.toLowerCase().includes("rate limit")) {
-         throw new BlockscoutError("Rate limited in payload");
+      const isNoTx = data.status === "0" && typeof data.result === "string" && data.result.toLowerCase().includes("no transactions");
+      const isRateLimit = data.status === "0" && typeof data.result === "string" && (data.result.toLowerCase().includes("rate limit") || data.message?.toLowerCase().includes("rate limit"));
+      const isPlanRestriction = data.status === "0" && typeof data.result === "string" && (data.result.toLowerCase().includes("not supported") || data.result.toLowerCase().includes("unauthorized"));
+
+      if (data.status === "0" && !isNoTx) {
+         if (isRateLimit) {
+           throw new BlockscoutError("Rate limited in payload");
+         }
+         if (isPlanRestriction) {
+           throw new BlockscoutError("Plan does not support this chain via V2");
+         }
+         throw new BlockscoutError(data.message || "Explorer returned status 0");
       }
       
       return data;

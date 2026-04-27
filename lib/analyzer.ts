@@ -26,7 +26,7 @@ async function getBalance(address: Address, warnings: string[]) {
     return Number(formatEther(BigInt(balanceWei || "0")));
   } catch {
     try {
-      warnings.push("Blockscout balance lookup failed. Used Base public RPC fallback.");
+      warnings.push("Explorer balance lookup failed. Used Base public RPC fallback.");
       return await getBaseBalanceEth(address);
     } catch {
       warnings.push("Could not fetch wallet balance. Balance-dependent points may be understated.");
@@ -43,7 +43,7 @@ async function getTransactions(address: Address, warnings: string[]) {
       throw new AnalyzerError(error.message, 429, error.code);
     }
 
-    warnings.push("Could not fetch full transaction history from Blockscout. Showing partial score.");
+    warnings.push("Could not fetch full transaction history from explorers. Showing partial score based on available data.");
     return {
       transactions: [] as NormalizedTx[],
       firstTransaction: null,

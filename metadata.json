@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
+  "name": "BaseScore",
+  "description": "Unofficial Base activity score and airdrop rank simulator. Check your 100-point wallet diagnostic.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

@@ -1,0 +1,18 @@
+{
+  "accountAssociation": {
+    "header": "",
+    "payload": "",
+    "signature": ""
+  },
+  "frame": {
+    "version": "1",
+    "name": "BaseScore",
+    "subtitle": "Base Airdrop Score Checker",
+    "description": "Unofficial Base activity score and airdrop rank simulator. Paste a wallet, get a 100-point diagnostic.",
+    "iconUrl": "https://base-score-phi.vercel.app/icon.svg",
+    "homeUrl": "https://base-score-phi.vercel.app",
+    "splashImageUrl": "https://base-score-phi.vercel.app/splash.png",
+    "splashBackgroundColor": "#000000",
+    "webhookUrl": "https://base-score-phi.vercel.app/api/webhook"
+  }
+}

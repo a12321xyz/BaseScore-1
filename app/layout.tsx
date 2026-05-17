@@ -4,6 +4,7 @@ import "./globals.css";
 import { getAppUrl } from "@/lib/utils";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { FarcasterProvider } from "@/components/farcaster-provider";
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-space" });
 const jetBrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
@@ -54,7 +55,23 @@ export const metadata: Metadata = {
     icon: "/icon.svg",
     apple: "/icon.svg"
   },
-  manifest: "/manifest.webmanifest"
+  manifest: "/manifest.webmanifest",
+  other: {
+    "fc:frame": JSON.stringify({
+      version: "next",
+      imageUrl: `${appUrl}/api/og`,
+      button: {
+        title: "Check Your BaseScore",
+        action: {
+          type: "launch_frame",
+          name: "BaseScore",
+          url: appUrl,
+          splashImageUrl: `${appUrl}/splash.png`,
+          splashBackgroundColor: "#000000",
+        },
+      },
+    }),
+  },
 };
 
 export const viewport: Viewport = {
@@ -68,7 +85,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`dark ${spaceGrotesk.variable} ${jetBrainsMono.variable}`}>
       <body className="font-sans antialiased bg-black text-white">
-        {children}
+        <FarcasterProvider>
+          {children}
+        </FarcasterProvider>
         <Analytics />
         <SpeedInsights />
       </body>

@@ -58,6 +58,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   other: {
     "base:app_id": "6a09cbbe55ab01a7700e0d8a",
+    "base:builder_code": "bc_t65dopuq",
     "fc:frame": JSON.stringify({
       version: "next",
       imageUrl: `${appUrl}/api/og`,
